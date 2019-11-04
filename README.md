@@ -11,13 +11,13 @@ Golang 公链开发工具。Dev tools for chains.Tools for integrating block cha
 - 可选的创建临时目录
 - 可选的跟踪打印日志或者将日志输出到某个文件
 - 支持的程序
-  - [ ] getc 
+  - [ ] getc ,需要$PATH下有`getc`
   - [ ] bitcoind
   - [ ] omnicored
   - [ ] geth
-  - [ ] parity
-  - [ ] bigbang
-  - [ ] ganache-cli
+  - [ ] parity, 需要$PATH下有`parity`
+  - [ ] bigbang, 需要$PATH下有`bigbang`
+  - [ ] ganache-cli, 需要$PATH下有`ganache-cli`
 
 ## 使用
 `go get github.com/dabankio/devtools4chains`

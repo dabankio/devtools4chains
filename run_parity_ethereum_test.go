@@ -10,14 +10,22 @@
 
 package devtools4chains
 
-//kill 时调用的函数
-type killHook func() error
+import (
+	"testing"
+	"time"
+)
 
-// DataDirOption .
-type DataDirOption struct {
-	NewTmpDir bool //创建并使用一个新的临时目录
+func TestRunParityEthereum(t *testing.T) {
+	killParity, err := RunParityEthereum(&RunParityEthereumConfig{
+		DataDir:   DataDirOption{NewTmpDir: true, NotRemoveTmpDirWhenKilling: true},
+		ChainJSON: ParityMordorVariantChainJSON,
+	})
 
-	//下面的选项在不使用临时目录时无效
-	TmpDirPrefix               string //如果创建临时目录，使用该值作为目录前缀
-	NotRemoveTmpDirWhenKilling bool   //在kill函数中不移除临时目录
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	defer killParity()
+
+	time.Sleep(time.Second * 10)
 }
