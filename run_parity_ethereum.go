@@ -21,19 +21,19 @@ import (
 
 //some parity related const
 const (
-	ParityCMD                   = "parity"
-	ParityDefaultJSONRPCPort    = "8548"
-	ParityDefaultJSONRPCPortInt = 8548
-	ParityDefaultRichAddress = "00a329c0648769a73afac7f9381e08fb43dbea72"
+	ParityCMD                          = "parity"
+	ParityDefaultJSONRPCPort           = "8548"
+	ParityDefaultJSONRPCPortInt        = 8548
+	ParityDefaultRichAddress           = "00a329c0648769a73afac7f9381e08fb43dbea72"
 	ParityDefaultRichAddressPrivateKey = "4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7"
 )
 
 // ParityEthereumDefaultArgs .
 func ParityEthereumDefaultArgs() map[string]*string {
 	return map[string]*string{
-		"--no-ws":         nil,
-		"--no-ipc":        nil,
-		"--jsonrpc-port": pstring(ParityDefaultJSONRPCPort),
+		"--no-ws":             nil,
+		"--no-ipc":            nil,
+		"--jsonrpc-port":      pstring(ParityDefaultJSONRPCPort),
 		"--jsonrpc-interface": pstring("127.0.0.1"),
 	}
 }

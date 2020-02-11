@@ -13,3 +13,8 @@ package devtools4chains
 const (
 	rfc3339Variant = "20060102_150405"
 )
+
+// KillFunc kill func
+type KillFunc func()
+
+var nothing2do = func() {} //避免空指针问题

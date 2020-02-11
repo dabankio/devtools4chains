@@ -11,13 +11,17 @@
 package devtools4chains
 
 import (
-	"encoding/json"
+	"fmt"
+	"testing"
+
+	"github.com/docker/docker/client"
 )
 
-func pstring(s string) *string { return &s }
-
-// JSONIndent marshal indent to string
-func JSONIndent(v interface{}) string {
-	b, _ := json.MarshalIndent(v, "", "  ")
-	return string(b)
+func Test_dockerIsImageExists(t *testing.T) {
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = dockerIsImageExists(cli, "ubuntu")
+	fmt.Println(err)
 }

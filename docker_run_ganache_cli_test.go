@@ -11,13 +11,14 @@
 package devtools4chains
 
 import (
-	"encoding/json"
+	"testing"
+	"time"
 )
 
-func pstring(s string) *string { return &s }
+func TestDockerRunGanacheCli(t *testing.T) {
+	killDockerContainer, err := DockerRunGanacheCli(&RunDockerContOptions{Log2std: true})
+	tShouldNil(t, err)
+	defer killDockerContainer()
 
-// JSONIndent marshal indent to string
-func JSONIndent(v interface{}) string {
-	b, _ := json.MarshalIndent(v, "", "  ")
-	return string(b)
+	time.Sleep(time.Second * 5)
 }
