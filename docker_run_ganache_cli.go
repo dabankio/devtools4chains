@@ -13,45 +13,56 @@ package devtools4chains
 import (
 	"context"
 	"log"
+	"strconv"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 )
 
 // DockerRunGanacheCli run ganache-cli from docker,
 // require: docker started daemon
-func DockerRunGanacheCli(opt *RunDockerContOptions) (func(), error) {
+func DockerRunGanacheCli(opt *RunDockerContOptions) (func(), int, error) {
 	cli, err := client.NewEnvClient()
 	if err != nil {
-		return nothing2do, err
+		return nothing2do, 0, err
 	}
 
 	// imgs, err := cli.ImageList(context.Background(), types.ImageListOptions{All: true})
 	// if err != nil {
-	// 	return nothing2do, err
+	// 	return nothing2do, 0, err
 	// }
 	// fmt.Println(imgs)
 
 	// _, err = cli.ImagePull(context.Background(), "trufflesuite/ganache-cli:latest", types.ImagePullOptions{})
 	// if err != nil {
-	// 	return nothing2do, err
+	// 	return nothing2do, 0, err
 	// }
+
+	idlePort, err := GetIdlePort()
+	if err != nil {
+		return func() {}, 0, err
+	}
 
 	cont, err := cli.ContainerCreate(context.Background(), &container.Config{
 		AttachStderr: true,
 		AttachStdout: true,
 		Tty:          true,
 		Image:        "trufflesuite/ganache-cli:latest",
-	}, &container.HostConfig{}, &network.NetworkingConfig{}, "")
+		ExposedPorts: nat.PortSet{"8545": struct{}{}},
+	}, &container.HostConfig{
+		AutoRemove:   true,
+		PortBindings: nat.PortMap{"8545": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: strconv.Itoa(idlePort)}}},
+	}, &network.NetworkingConfig{}, "")
 	if err != nil {
-		return nothing2do, err
+		return nothing2do, 0, err
 	}
 
 	err = cli.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
-		return nothing2do, err
+		return nothing2do, 0, err
 	}
 	if opt != nil && opt.Log2std {
 		go followPrintContainerLog(cli, cont.ID)
@@ -74,14 +85,14 @@ func DockerRunGanacheCli(opt *RunDockerContOptions) (func(), error) {
 			log.Println("[Err] failed to remove container")
 		}
 		log.Println("[info] container removed")
-	}, nil
+	}, idlePort, nil
 
 	// cmd := exec.Command("docker", "run", "-p", "8545:8545", "trufflesuite/ganache-cli:latest")
 	// cmd.Stderr = os.Stderr
 	// cmd.Stdout = os.Stdout
 	// err := cmd.Start()
 	// if err != nil {
-	// return nothing2do, err
+	// return nothing2do, 0, err
 	// }
 	// return func() {
 	// e := cmd.Process.Kill()
