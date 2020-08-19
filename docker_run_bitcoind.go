@@ -13,6 +13,7 @@ package devtools4chains
 import (
 	"context"
 	"log"
+	"strconv"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -48,9 +49,12 @@ curl --data-binary '{"jsonrpc":"1.0","id":"curltext","method":"getblockchaininfo
 // DockerRunBitcoin 。
 func DockerRunBitcoin(opt DockerRunOptions) (KillFunc, *DockerBitcoinInfo, error) {
 	const (
-		port            = 18443
 		rpcUser, rpcPwd = "rpcusr", "233"
 	)
+	idlePort, err := GetIdlePort()
+	if err != nil {
+		return func() {}, nil, err
+	}
 
 	cli, err := client.NewEnvClient()
 	if err != nil {
@@ -67,7 +71,7 @@ func DockerRunBitcoin(opt DockerRunOptions) (KillFunc, *DockerBitcoinInfo, error
 
 	hostConfig := &container.HostConfig{
 		AutoRemove:      opt.AutoRemove,
-		PortBindings:    nat.PortMap{"18443": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "18443"}}},
+		PortBindings:    nat.PortMap{"18443": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: strconv.Itoa(idlePort)}}},
 		PublishAllPorts: true,
 		Mounts:          []mount.Mount{ //可用binds
 			// {Type: "bind", Target: "/work", Source: workPath},
@@ -83,6 +87,7 @@ func DockerRunBitcoin(opt DockerRunOptions) (KillFunc, *DockerBitcoinInfo, error
 			"-rpcbind=0.0.0.0", //default 127.0.0.1, it does not work in docker publish port out
 			"-rpcauth=rpcusr:656f9dabc62f0eb697c801369617dc60$422d7fca742d4a59460f941dc9247c782558367edcbf1cd790b2b7ff5624fc1b", //rpcusr:233
 			"-rpcport=18443",
+			"-fallbackfee=0.000002",
 		},
 		ExposedPorts: nat.PortSet{"18443": struct{}{}},
 	}, hostConfig, &network.NetworkingConfig{}, "")
@@ -104,10 +109,10 @@ func DockerRunBitcoin(opt DockerRunOptions) (KillFunc, *DockerBitcoinInfo, error
 			log.Println("[info] container stopped")
 		}, &DockerBitcoinInfo{
 			Docker: DockerContainerInfo{
-				ListenPorts: []int{port}, //TODO fix ports
+				ListenPorts: []int{idlePort}, //TODO fix ports
 			},
 			RPCUser: rpcUser,
-			RPCPort: port,
+			RPCPort: idlePort,
 			RPCPwd:  rpcPwd,
 		}, nil
 }

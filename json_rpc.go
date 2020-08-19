@@ -3,9 +3,12 @@ package devtools4chains
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // RPCInfo .
@@ -13,6 +16,24 @@ type RPCInfo struct {
 	Host     string
 	User     string
 	Password string
+	Debug    bool
+}
+
+// rpcRequest represent a RCP request
+type rpcRequest struct {
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params"`
+	ID      int64       `json:"id"`
+	JSONRpc string      `json:"jsonrpc"`
+}
+
+type RPCResponse struct {
+	ID     int64           `json:"id"`
+	Result json.RawMessage `json:"result"`
+	Err    struct {
+		Code    int16  `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
 }
 
 // RPCCallJSON call json rpc
@@ -20,7 +41,7 @@ func RPCCallJSON(rpcInfo RPCInfo, method string, params interface{}, result inte
 	if !strings.HasPrefix(rpcInfo.Host, "http") {
 		rpcInfo.Host = "http://" + rpcInfo.Host
 	}
-	b, err := json.Marshal(params)
+	b, err := json.Marshal(rpcRequest{method, params, time.Now().UnixNano(), "1.0"})
 	if err != nil {
 		return nil, err
 	}
@@ -30,6 +51,7 @@ func RPCCallJSON(rpcInfo RPCInfo, method string, params interface{}, result inte
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
 
 	if rpcInfo.User != "" {
 		req.SetBasicAuth(rpcInfo.User, rpcInfo.Password)
@@ -43,10 +65,22 @@ func RPCCallJSON(rpcInfo RPCInfo, method string, params interface{}, result inte
 	if err != nil {
 		return nil, err
 	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%d, %s", resp.StatusCode, string(body))
+	}
+
+	if rpcInfo.Debug {
+		log.Println("[dbg] rpc return", string(body))
+	}
+	var rpcRet RPCResponse
+	if err = json.Unmarshal(body, &rpcRet); err != nil {
+		return nil, err
+	}
 	if result != nil {
-		if err = json.Unmarshal(body, result); err != nil {
+		if err = json.Unmarshal(rpcRet.Result, &result); err != nil {
 			return nil, err
 		}
 	}
-	return body, nil
+	return rpcRet.Result, nil
 }
