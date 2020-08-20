@@ -24,7 +24,7 @@ import (
 
 // DockerRunGanacheCli run ganache-cli from docker,
 // require: docker started daemon
-func DockerRunGanacheCli(opt *RunDockerContOptions) (func(), int, error) {
+func DockerRunGanacheCli(opt *DockerRunOptions) (func(), int, error) {
 	cli, err := client.NewEnvClient()
 	if err != nil {
 		return nothing2do, 0, err
@@ -46,11 +46,17 @@ func DockerRunGanacheCli(opt *RunDockerContOptions) (func(), int, error) {
 		return func() {}, 0, err
 	}
 
+	image := opt.Image
+	if image == nil {
+		_x := "trufflesuite/ganache-cli:latest"
+		image = &_x
+	}
+
 	cont, err := cli.ContainerCreate(context.Background(), &container.Config{
 		AttachStderr: true,
 		AttachStdout: true,
 		Tty:          true,
-		Image:        "trufflesuite/ganache-cli:latest",
+		Image:        *image,
 		ExposedPorts: nat.PortSet{"8545": struct{}{}},
 	}, &container.HostConfig{
 		AutoRemove:   true,
@@ -79,12 +85,6 @@ func DockerRunGanacheCli(opt *RunDockerContOptions) (func(), int, error) {
 			log.Println("[Err] stop container error", e)
 		}
 		log.Println("[info] container stopped")
-
-		e = cli.ContainerRemove(context.Background(), cont.ID, types.ContainerRemoveOptions{RemoveVolumes: true})
-		if e != nil {
-			log.Println("[Err] failed to remove container")
-		}
-		log.Println("[info] container removed")
 	}, idlePort, nil
 
 	// cmd := exec.Command("docker", "run", "-p", "8545:8545", "trufflesuite/ganache-cli:latest")

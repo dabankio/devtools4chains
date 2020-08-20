@@ -39,12 +39,6 @@ docker run --name nodeos -d -p 8888:8888 -v ~/eos:/work \
 --access-control-allow-origin=* --contracts-console --http-validate-host=false"
 */
 
-// DockerRunOptions .
-type DockerRunOptions struct {
-	AutoRemove bool
-	Image      *string //默认 defaultEOSNodeImage
-}
-
 // DockerRunNodeosOptions .
 type DockerRunNodeosOptions struct {
 	DockerRunOptions

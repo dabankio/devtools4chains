@@ -13,6 +13,7 @@ package devtools4chains
 import (
 	"context"
 	"log"
+	"strconv"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -40,13 +41,17 @@ curl --data-binary '{"jsonrpc":"1.0","id":"curltext","method":"getblockchaininfo
 // DockerRunOmnicored 。
 func DockerRunOmnicored(opt DockerRunOptions) (KillFunc, *DockerBitcoinInfo, error) {
 	const (
-		port            = 18443
 		rpcUser, rpcPwd = "rpcusr", "233"
 	)
 
 	cli, err := client.NewEnvClient()
 	if err != nil {
 		return nothing2do, nil, err
+	}
+
+	idlePort, err := GetIdlePort()
+	if err != nil {
+		return func() {}, nil, err
 	}
 
 	if opt.Image == nil {
@@ -59,7 +64,7 @@ func DockerRunOmnicored(opt DockerRunOptions) (KillFunc, *DockerBitcoinInfo, err
 
 	hostConfig := &container.HostConfig{
 		AutoRemove:      opt.AutoRemove,
-		PortBindings:    nat.PortMap{"18443": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "18443"}}},
+		PortBindings:    nat.PortMap{"18443": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: strconv.Itoa(idlePort)}}},
 		PublishAllPorts: true,
 		Mounts:          []mount.Mount{ //可用binds
 			// {Type: "bind", Target: "/work", Source: workPath},
@@ -97,10 +102,10 @@ func DockerRunOmnicored(opt DockerRunOptions) (KillFunc, *DockerBitcoinInfo, err
 			log.Println("[info] container stopped")
 		}, &DockerBitcoinInfo{
 			Docker: DockerContainerInfo{
-				ListenPorts: []int{port}, //TODO fix ports
+				ListenPorts: []int{idlePort}, //TODO fix ports
 			},
 			RPCUser: rpcUser,
-			RPCPort: port,
+			RPCPort: idlePort,
 			RPCPwd:  rpcPwd,
 		}, nil
 }

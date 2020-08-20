@@ -19,9 +19,11 @@ import (
 	"github.com/docker/docker/client"
 )
 
-// RunDockerContOptions run docker container options
-type RunDockerContOptions struct {
-	Log2std bool
+// DockerRunOptions .
+type DockerRunOptions struct {
+	AutoRemove bool
+	Image      *string //默认 defaultEOSNodeImage
+	Log2std    bool
 }
 
 // DockerContainerInfo .
