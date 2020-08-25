@@ -31,6 +31,7 @@ type DockerCore struct {
 	MinerAddress   string //矿工地址（资金来源)
 	MinerOwnerPubk string //矿工owner address 公钥
 	UnlockPass     string //已有地址解锁密码
+	RPCPort        int
 	Conf           bbrpc.ConnConfig
 }
 
@@ -66,6 +67,7 @@ func DockerRunDevCore(imageName string, autoRemove bool) (func(), DockerCore, er
 	if err != nil {
 		return func() {}, info, err
 	}
+	info.RPCPort = idlePort
 
 	cont, err := cli.ContainerCreate(context.Background(), &container.Config{
 		// AttachStderr: true,
