@@ -77,7 +77,7 @@ func DockerRunMKFDev(imageName string, autoRemove bool) (func(), DockerCore, err
 	if err != nil {
 		return func() {}, info, err
 	}
-	log.Println("[info] bbc container started", cont.ID)
+	log.Println("[info] mkf container started", cont.ID)
 
 	stopContainer := func() {
 		if er := cli.ContainerStop(context.Background(), cont.ID, nil); er != nil {

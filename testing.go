@@ -11,11 +11,30 @@
 package devtools4chains
 
 import (
+	"context"
 	"reflect"
 	"runtime/debug"
 	"strings"
 	"testing"
+	"time"
 )
+
+// WaitSomething 等待fn() return nil
+func WaitSomething(t *testing.T, timeout time.Duration, fn func() error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("wait something timeout, %s", timeout)
+		default:
+			if e := fn(); e == nil {
+				return
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+}
 
 func tShouldNil(t *testing.T, v interface{}, args ...interface{}) {
 	if v != nil {
