@@ -13,6 +13,7 @@ package devtools4chains
 import (
 	"encoding/json"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -23,6 +24,8 @@ func JSONIndent(v interface{}) string {
 	b, _ := json.MarshalIndent(v, "", "  ")
 	return string(b)
 }
+
+var recentPorts sync.Map
 
 // GetIdlePort 随机获取一个空闲的端口
 func GetIdlePort() (int, error) {
@@ -35,8 +38,16 @@ func GetIdlePort() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	time.AfterFunc(3*time.Second, func() { //端口在3秒后释放，避免多个请求同时发起取得相同的端口
-		l.Close()
-	})
-	return l.Addr().(*net.TCPAddr).Port, nil
+	defer l.Close()
+	port := l.Addr().(*net.TCPAddr).Port
+	samePortLastUseI, ok := recentPorts.Load(port)
+	if !ok {
+		recentPorts.Store(port, time.Now())
+		return port, nil
+	}
+	samePortLastUse := samePortLastUseI.(time.Time)
+	if time.Now().Sub(samePortLastUse) > 10*time.Minute { //如果这个地址10分钟内没有用过则可以使用
+		return port, nil
+	}
+	return GetIdlePort() //
 }
