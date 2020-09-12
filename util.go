@@ -13,6 +13,7 @@ package devtools4chains
 import (
 	"encoding/json"
 	"net"
+	"time"
 )
 
 func pstring(s string) *string { return &s }
@@ -34,6 +35,8 @@ func GetIdlePort() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer l.Close()
+	time.AfterFunc(3*time.Second, func() { //端口在3秒后释放，避免多个请求同时发起取得相同的端口
+		l.Close()
+	})
 	return l.Addr().(*net.TCPAddr).Port, nil
 }

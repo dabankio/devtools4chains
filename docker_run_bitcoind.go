@@ -12,8 +12,10 @@ package devtools4chains
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -100,6 +102,19 @@ func DockerRunBitcoin(opt DockerRunOptions) (KillFunc, *DockerBitcoinInfo, error
 		return nothing2do, nil, err
 	}
 	log.Printf("container [%s] started\n", *opt.Image)
+
+	for {
+		_, err = RPCCallJSON(RPCInfo{
+			Host:     fmt.Sprintf("127.0.0.1:%d", idlePort),
+			User:     rpcUser,
+			Password: rpcPwd,
+		}, "getblockcount", nil, nil)
+		if err == nil {
+			break
+		}
+		log.Println("wait for rpc service")
+		time.Sleep(time.Second)
+	}
 
 	return func() {
 			log.Printf("[info] stop container: %s (autoRemove: %v)\n", *opt.Image, opt.AutoRemove)
