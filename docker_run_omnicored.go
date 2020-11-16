@@ -25,7 +25,7 @@ import (
 
 // const
 const (
-	DockerImageOmnicored = "mpugach/omnicored:v0.7.0-alpine"
+	DockerImageOmnicored = "mpugach/omnicored:v0.8.2-alpine"
 )
 
 /**

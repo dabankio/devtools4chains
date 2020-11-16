@@ -3,7 +3,10 @@ package devtools4chains
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,18 +16,21 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-pg/pg/v9"
+	r "github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
 // some docker const
 const (
+	EnvLocalDB = "DEV_PG" //value: port:database;name;password , eg: create user dev_pg with CREATEDB password 'pwd'; create database dev_pg with owner dev_pg; DEV_PG=5432;dev_pg;dev_pg;pwd
+
 	DockerPGPassword = "pwd"
 	DockerPGUser     = "postgres"
 	DockerPGDatabase = "postgres"
 )
 
-// DockerPGInfo 运行的docker pg容器信息
-type DockerPGInfo struct {
+// PGInfo 运行的docker pg容器信息
+type PGInfo struct {
 	Port          int
 	User          string
 	Password      string
@@ -33,7 +39,7 @@ type DockerPGInfo struct {
 }
 
 // RunTestInDockerPG .
-func RunTestInDockerPG(testFn func(info DockerPGInfo)) error {
+func RunTestInDockerPG(testFn func(info PGInfo)) error {
 	stopPG, info, err := DockerRunPG(DockerRunOptions{
 		AutoRemove: true,
 	})
@@ -45,14 +51,53 @@ func RunTestInDockerPG(testFn func(info DockerPGInfo)) error {
 	return nil
 }
 
+var unitTestDBIndex int32
+
+// NewDB4test 创建一个新的数据库以供测试使用
+func NewDB4test(t *testing.T, autoRemove bool) PGInfo {
+	t.Log("create test database using local env:", os.Getenv(EnvLocalDB))
+	seedInfo := strings.Split(os.Getenv(EnvLocalDB), ";") //port;database;user;password
+	r.Len(t, seedInfo, 4)
+	port, err := strconv.Atoi(seedInfo[0])
+	r.NoError(t, err)
+	dbName := fmt.Sprintf("ut_%d_%d", atomic.AddInt32(&unitTestDBIndex, 1), time.Now().Unix())
+	user, password := seedInfo[2], seedInfo[3]
+	db := pg.Connect(&pg.Options{
+		Database: seedInfo[1],
+		User:     user,
+		Password: password,
+		Addr:     fmt.Sprintf("127.0.0.1:%d", port),
+	})
+
+	_, err = db.Exec(fmt.Sprintf("create database %s owner %s", dbName, user))
+	r.NoError(t, err)
+
+	t.Cleanup(func() {
+		defer db.Close()
+		if autoRemove {
+			_, _ = db.Exec(fmt.Sprintf("drop database if exists %s", dbName))
+		}
+	})
+
+	return PGInfo{
+		Port:     port,
+		Database: dbName,
+		User:     user,
+		Password: password,
+	}
+}
+
 // MustRunPG 启动一个docker pg供测试使用，自动注册停止pg 函数
 // ops[0]将生效（如果有）
 // 无法创建数据库时 t.Fatal
-func MustRunPG(t *testing.T, ops ...DockerRunOptions) DockerPGInfo {
-	if len(ops) == 0 {
-		ops = []DockerRunOptions{{AutoRemove: true}}
+func MustRunPG(t *testing.T) PGInfo {
+	notAutoRemove := os.Getenv("DOCKER_AUTO_REMOVE") == "n"
+	ops := DockerRunOptions{AutoRemove: !notAutoRemove}
+	if os.Getenv(EnvLocalDB) != "" {
+		return NewDB4test(t, ops.AutoRemove)
 	}
-	stopPG, info, err := DockerRunPG(ops[0])
+
+	stopPG, info, err := DockerRunPG(ops)
 	if err != nil {
 		t.Fatal("run docker pg failed", err)
 	} else {
@@ -75,8 +120,8 @@ func MustRunPG(t *testing.T, ops ...DockerRunOptions) DockerPGInfo {
 // 启动后可以通过这些方式psql:
 //    psql -h 127.0.0.1 -p {port} -U postgres -W
 //    docker exec -it pg_{port}_{containerName} psql
-func DockerRunPG(opt DockerRunOptions) (func(), DockerPGInfo, error) {
-	info := DockerPGInfo{
+func DockerRunPG(opt DockerRunOptions) (func(), PGInfo, error) {
+	info := PGInfo{
 		User:     DockerPGUser,
 		Password: DockerPGPassword,
 		Database: DockerPGDatabase,
@@ -150,7 +195,7 @@ func DockerRunPG(opt DockerRunOptions) (func(), DockerPGInfo, error) {
 }
 
 // ToPGOption convert to *pg.Options
-func (info DockerPGInfo) ToPGOption() *pg.Options {
+func (info PGInfo) ToPGOption() *pg.Options {
 	return &pg.Options{
 		ApplicationName: "unit testing",
 		Database:        info.Database,
